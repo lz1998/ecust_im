@@ -29,4 +29,7 @@ func main() {
 		})
 	}
 
+	if err := router.Run(":9999"); err != nil {
+		panic(err)
+	}
 }
