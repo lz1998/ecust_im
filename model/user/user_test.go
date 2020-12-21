@@ -3,7 +3,10 @@ package user
 import "testing"
 
 func TestCreateUser(t *testing.T) {
-	user, err := CreateUser("123", "hello")
+	user, err := CreateUser(&EcustUser{
+		Password: "123",
+		Nickname: "hello",
+	})
 	if err != nil {
 		t.Error(err)
 	} else {

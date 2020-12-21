@@ -6,7 +6,7 @@ import (
 )
 
 type EcustGroup struct {
-	GroupId   int64     `gorm:"column:group_id" json:"group_id" form:"group_id"`
+	GroupId   int64     `gorm:"column:group_id;primary_key;auto_increment;not_null" json:"group_id" form:"group_id"`
 	GroupName string    `gorm:"column:group_name" json:"group_name" form:"group_name"`
 	OwnerId   int64     `gorm:"column:owner_id" json:"owner_id" form:"owner_id"`
 	Status    int64     `gorm:"column:status" json:"status" form:"status"`
