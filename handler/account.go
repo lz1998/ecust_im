@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/lz1998/ecust_im/dto"
 	"github.com/lz1998/ecust_im/model/user"
+	"github.com/lz1998/ecust_im/util"
 )
 
 func Register(c *gin.Context) {
@@ -48,10 +49,15 @@ func Login(c *gin.Context) {
 			Msg: "password error",
 		}
 	} else {
+		token, err := util.GenerateJwtTokenString(u)
+		if err != nil {
+			c.String(http.StatusInternalServerError, "generate jwt error")
+			return
+		}
 		resp = &dto.LoginResp{
 			Ok:    true,
 			Msg:   "login success",
-			Token: "", // TODO 生成jwt token
+			Token: token,
 		}
 	}
 	Return(c, resp)
