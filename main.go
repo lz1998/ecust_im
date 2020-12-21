@@ -18,6 +18,7 @@ func main() {
 	}
 	{
 		group := router.Group("/im")
+		group.Use(handler.CheckLogin)
 		//group.Use(middleware.CheckLogin)// 登陆检测，从token获取信息，放在context
 		group.POST("/createGroup", handler.CreateGroup)
 		group.POST("/getFriends", handler.GetFriends)

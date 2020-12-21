@@ -2,12 +2,33 @@ package handler
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/lz1998/ecust_im/dto"
 	"github.com/lz1998/ecust_im/model/user"
 	"github.com/lz1998/ecust_im/util"
 )
+
+const bearerLength = len("Bearer ")
+
+func CheckLogin(c *gin.Context) {
+	authHeader := c.GetHeader("Authorization")
+	if len(authHeader) < bearerLength {
+		c.String(http.StatusUnauthorized, "not login")
+		c.Abort()
+		return
+	}
+	jwtStr := strings.TrimSpace(authHeader[bearerLength:])
+	ecustUser, err := util.JwtParseUser(jwtStr)
+	if err != nil {
+		c.String(http.StatusUnauthorized, "not login")
+		c.Abort()
+		return
+	}
+	c.Set("user", ecustUser)
+	c.Next()
+}
 
 func Register(c *gin.Context) {
 	req := &dto.RegisterReq{}
