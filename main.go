@@ -24,7 +24,7 @@ func main() {
 		group.POST("/getGroups", handler.GetGroups)
 
 		// websocket
-		group.GET("/ws", func(c *gin.Context) {
+		group.GET("/ws", func(c *gin.Context) { // TODO 连接时检测header的jwt token，并记录相关信息，可能需要定义一个struct
 			handler.WsHandler(c.Writer, c.Request)
 		})
 	}

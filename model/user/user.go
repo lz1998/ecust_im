@@ -47,6 +47,17 @@ func ListUser(userIds []int64) ([]*EcustUser, error) {
 	return users, nil
 }
 
+func GetUser(userId int64) (*EcustUser, error) {
+	user := &EcustUser{}
+	q := model.Db.Model(&EcustUser{})
+	q = q.Where("status = 0")
+	q = q.Where("user_id = ?", userId)
+	if err := q.First(user).Error; err != nil {
+		return nil, err
+	}
+	return user, nil
+}
+
 func UpdateUser(users []*EcustUser) error {
 	for _, user := range users {
 		if err := model.Db.Model(user).Updates(user).Error; err != nil {
