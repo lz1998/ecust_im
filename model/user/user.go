@@ -33,3 +33,25 @@ func CreateUser(password string, nickname string) (*EcustUser, error) {
 	}
 	return user, nil
 }
+
+func ListUser(userIds []int64) ([]*EcustUser, error) {
+	var users []*EcustUser
+
+	q := model.Db.Model(&EcustUser{})
+	q = q.Where("status = 0")
+	q = q.Where("user_id in ?", userIds)
+
+	if err := q.Find(&users).Error; err != nil {
+		return nil, err
+	}
+	return users, nil
+}
+
+func UpdateUser(users []*EcustUser) error {
+	for _, user := range users {
+		if err := model.Db.Model(user).Updates(user).Error; err != nil {
+			return err
+		}
+	}
+	return nil
+}
