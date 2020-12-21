@@ -1,6 +1,9 @@
 package group
 
-import "time"
+import (
+	"github.com/lz1998/ecust_im/model"
+	"time"
+)
 
 type EcustGroup struct {
 	GroupId   int64     `gorm:"column:group_id" json:"group_id" form:"group_id"`
@@ -11,4 +14,38 @@ type EcustGroup struct {
 	UpdatedAt time.Time `gorm:"column:updated_at" json:"updated_at" form:"updated_at"`
 }
 
-func CreateGroup
+func CreateGroup(g *EcustGroup) (*EcustGroup, error) {
+	group := &EcustGroup{
+		GroupName: g.GroupName,
+		OwnerId:   g.OwnerId,
+		Status:    0,
+	}
+
+	if err := model.Db.Create(group).Error; err != nil {
+		return nil, err
+	}
+	return group, nil
+}
+
+func ListGroup(groupIds []int64) ([]*EcustGroup, error) {
+	var groups []*EcustGroup
+
+	q := model.Db.Model(&EcustGroup{})
+	q = q.Where("status = 0")
+	q = q.Where("group_id in ?", groupIds)
+
+	if err := q.Find(&groups).Error; err != nil {
+		return nil, err
+	}
+	return groups, nil
+}
+
+// 在handler层需要检测权限，这里允许修改ownerId（转让群）
+func UpdateGroup(groups []*EcustGroup) error {
+	for _, groups := range groups {
+		if err := model.Db.Model(groups).Updates(groups).Error; err != nil {
+			return err
+		}
+	}
+	return nil
+}
