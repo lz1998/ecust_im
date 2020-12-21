@@ -2,9 +2,10 @@ package friend
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/lz1998/ecust_im/model"
 	"gorm.io/gorm/clause"
-	"time"
 )
 
 type EcustFriend struct {

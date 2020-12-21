@@ -1,8 +1,9 @@
 package group
 
 import (
-	"github.com/lz1998/ecust_im/model"
 	"time"
+
+	"github.com/lz1998/ecust_im/model"
 )
 
 type EcustGroup struct {
