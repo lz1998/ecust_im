@@ -22,10 +22,10 @@ type EcustUser struct {
 //	}
 //}
 
-func CreateUser(password string, nickname string) (*EcustUser, error) {
+func CreateUser(u *EcustUser) (*EcustUser, error) {
 	user := &EcustUser{
-		Password: password,
-		Nickname: nickname,
+		Password: u.Password,
+		Nickname: u.Nickname,
 		Status:   0,
 	}
 	if err := model.Db.Create(user).Error; err != nil {
