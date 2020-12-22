@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/go-redis/redis/v8"
+	"github.com/syndtr/goleveldb/leveldb"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/schema"
@@ -11,7 +12,7 @@ import (
 
 var Db *gorm.DB       // MySQL
 var RDb *redis.Client // Redis
-// TODO leveldb
+var LDb *leveldb.DB
 
 func init() {
 
@@ -28,9 +29,17 @@ func init() {
 	}
 	Db = db
 
+	// Redis
 	RDb = redis.NewClient(&redis.Options{
 		Addr:     "tmp.lz1998:16379",
 		Password: os.Getenv("REDIS_PASSWORD"), // no password set
 		DB:       0,                           // use default DB
 	})
+
+	// levelDB
+	ldb, err := leveldb.OpenFile("leveldb", nil)
+	if err != nil {
+		panic(err)
+	}
+	LDb = ldb
 }
