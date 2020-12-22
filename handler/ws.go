@@ -2,11 +2,11 @@ package handler
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
 
-	"encoding/json"
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/websocket"
@@ -83,19 +83,19 @@ func WsHandler(c *gin.Context) {
 				for _, message := range stream.Messages {
 					pid, ok := message.Values["packetId"]
 					if !ok {
-						log.Warnf("packetId not exists")
+						log.Errorf("packetId not exists")
 						model.RDb.XAck(context.Background(), streamName, "cg1", message.ID)
 						continue
 					}
 					packetId, ok := pid.(string)
 					if !ok {
-						log.Warnf("packet is not string")
+						log.Errorf("packet is not string")
 						model.RDb.XAck(context.Background(), streamName, "cg1", message.ID)
 						continue
 					}
 					data, err := model.LDb.Get([]byte(packetId), nil)
 					if err != nil {
-						log.Warnf("failed to get packet, err: %+v", err)
+						log.Errorf("failed to get packet, err: %+v", err)
 						continue
 					}
 					if err := conn.WriteMessage(websocket.BinaryMessage, data); err != nil {
@@ -104,6 +104,7 @@ func WsHandler(c *gin.Context) {
 						_ = conn.Close()
 						break
 					}
+					model.RDb.XAck(context.Background(), streamName, "cg1", message.ID)
 				}
 			}
 		}
