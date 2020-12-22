@@ -130,7 +130,9 @@ func WsHandler(c *gin.Context) {
 				}
 			}
 
-			// TODO 加群/加好友请求 群/好友消息处理
+			util.SafeGo(func() {
+				HandlePacket(ecustUser.UserId, packet)
+			})
 		}
 	})
 }
@@ -181,4 +183,28 @@ func GeneratePacketId(packet *dto.Packet) string {
 		}
 	}
 	return packetId
+}
+
+func HandlePacket(fromUserId int64, packet *dto.Packet) {
+	if packet.PacketType == dto.Packet_TMsg {
+		msg := packet.GetMsg()
+		msg.MsgHead.FromId = fromUserId
+		HandleMsg(msg)
+	} else {
+		request := packet.GetRequest()
+		request.FromId = fromUserId
+		HandleRequest(request)
+	}
+}
+
+func HandleRequest(request *dto.Request) {
+	// TODO 保存MySQL
+	// TODO 转发给对方/群主
+
+}
+
+func HandleMsg(msg *dto.Msg) {
+	// TODO 私聊 直接转发给对方
+	// TODO 群聊 找出群内所有人，转发
+
 }
