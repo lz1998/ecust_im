@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"fmt"
+	"github.com/lz1998/ecust_im/model/group_member"
 	"net/http"
 	"time"
 
@@ -153,9 +154,11 @@ func SendPacket(userId int64, packet *dto.Packet) error {
 		return err
 	}
 
+	streamName := fmt.Sprintf("PACKET:%d", userId)
 	// redis 消息队列发布
 	return model.RDb.XAdd(context.Background(), &redis.XAddArgs{
 		ID:     "*",
+		Stream: streamName,
 		Values: []string{"packetId", packetId},
 	}).Err()
 }
@@ -169,10 +172,10 @@ func GeneratePacketId(packet *dto.Packet) string {
 	var packetId string
 	if packet.PacketType == dto.Packet_TMsg {
 		msg := packet.GetMsg()
-		if msg.MsgHead.MsgType == dto.MsgHead_TFriend {
-			packetId = fmt.Sprintf("msg:friend:%d:%d", msg.MsgHead.ToId, uniqId)
+		if msg.MsgType == dto.Msg_TFriend {
+			packetId = fmt.Sprintf("msg:friend:%d:%d", msg.ToId, uniqId)
 		} else {
-			packetId = fmt.Sprintf("msg:group:%d:%d", msg.MsgHead.ToId, uniqId)
+			packetId = fmt.Sprintf("msg:group:%d:%d", msg.ToId, uniqId)
 		}
 	} else {
 		request := packet.GetRequest()
@@ -188,7 +191,7 @@ func GeneratePacketId(packet *dto.Packet) string {
 func HandlePacket(fromUserId int64, packet *dto.Packet) {
 	if packet.PacketType == dto.Packet_TMsg {
 		msg := packet.GetMsg()
-		msg.MsgHead.FromId = fromUserId
+		msg.FromId = fromUserId
 		HandleMsg(msg)
 	} else {
 		request := packet.GetRequest()
@@ -204,7 +207,32 @@ func HandleRequest(request *dto.Request) {
 }
 
 func HandleMsg(msg *dto.Msg) {
-	// TODO 私聊 直接转发给对方
-	// TODO 群聊 找出群内所有人，转发
-
+	// 私聊 直接转发给对方
+	// 群聊 找出群内所有人，发送到每个人的队列（写扩散）
+	packet := &dto.Packet{
+		Timestamp:  time.Now().Unix(),
+		PacketType: dto.Packet_TMsg,
+		Data: &dto.Packet_Msg{
+			Msg: msg,
+		},
+	}
+	if msg.MsgType == dto.Msg_TFriend {
+		if err := SendPacket(msg.ToId, packet); err != nil {
+			log.Errorf("failed to send packet, err: %+v", err)
+			return
+		}
+	} else {
+		groupId := msg.ToId
+		memberIds, err := group_member.ListGroupMember(groupId)
+		if err != nil {
+			log.Errorf("failed to list group member")
+			return
+		}
+		for _, memberId := range memberIds {
+			if err := SendPacket(memberId, packet); err != nil {
+				log.Errorf("failed to send packet, err: %+v", err)
+				return
+			}
+		}
+	}
 }
