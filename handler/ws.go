@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"time"
 
 	"encoding/json"
 	"github.com/gin-gonic/gin"
@@ -16,9 +17,15 @@ var (
 	wsUpgrader = websocket.Upgrader{}
 )
 
+type SendingMessage struct {
+	MessageType int
+	Data        []byte
+}
+
 type UserSession struct {
-	Conn *websocket.Conn
-	User *user.EcustUser
+	Conn        *websocket.Conn
+	User        *user.EcustUser
+	SendChannel chan *SendingMessage
 }
 
 var SessionMap = make(map[int64]*UserSession)
@@ -34,8 +41,9 @@ func WsHandler(c *gin.Context) {
 	conn, err := wsUpgrader.Upgrade(c.Writer, c.Request, nil)
 
 	session := &UserSession{
-		Conn: conn,
-		User: ecustUser,
+		Conn:        conn,
+		User:        ecustUser,
+		SendChannel: make(chan *SendingMessage, 100),
 	}
 	SessionMap[ecustUser.UserId] = session
 	if err != nil {
@@ -43,12 +51,26 @@ func WsHandler(c *gin.Context) {
 		return
 	}
 
+	// 发送channel
+	util.SafeGo(func() {
+		for {
+			sendingMessage := <-session.SendChannel
+			_ = conn.SetWriteDeadline(time.Now().Add(15 * time.Second))
+			if err := conn.WriteMessage(sendingMessage.MessageType, sendingMessage.Data); err != nil {
+				delete(SessionMap, ecustUser.UserId)
+				_ = conn.Close()
+				break
+			}
+		}
+	})
+
+	// 接收channel
 	util.SafeGo(func() {
 		for {
 			messageType, bytes, err := conn.ReadMessage()
 			if err != nil {
-				_ = conn.Close()
 				delete(SessionMap, ecustUser.UserId)
+				_ = conn.Close()
 				break
 			}
 			var packet = &dto.Packet{}
