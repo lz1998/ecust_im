@@ -39,6 +39,10 @@ func WsHandler(c *gin.Context) {
 	}
 
 	conn, err := wsUpgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "failed to upgrade")
+		return
+	}
 
 	session := &UserSession{
 		Conn:        conn,
@@ -46,10 +50,6 @@ func WsHandler(c *gin.Context) {
 		SendChannel: make(chan *SendingMessage, 100),
 	}
 	SessionMap[ecustUser.UserId] = session
-	if err != nil {
-		c.String(http.StatusInternalServerError, "failed to upgrade")
-		return
-	}
 
 	// 发送channel
 	util.SafeGo(func() {
