@@ -2,6 +2,9 @@ package handler
 
 import (
 	"fmt"
+	"github.com/lz1998/ecust_im/model/friend"
+	"github.com/lz1998/ecust_im/model/group_member"
+	"github.com/lz1998/ecust_im/model/user"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -21,27 +24,71 @@ func CreateGroup(c *gin.Context) {
 		return
 	}
 
-	g, err := group.CreateGroup(&group.EcustGroup{
+	tmp, exist := c.Get("user")
+	ecustUser := tmp.(*user.EcustUser)
+	if !exist {
+		c.String(http.StatusUnauthorized, "not login")
+		return
+	}
+
+	ecustGroup, err := group.CreateGroup(&group.EcustGroup{
 		GroupName: req.GroupName,
-		OwnerId:   0, // TODO jwt做好之后从jwt获取
+		OwnerId:   ecustUser.UserId,
 	})
 	if err != nil {
 		c.String(http.StatusInternalServerError, "create user error")
 		return
 	}
 	resp := &dto.CreateGroupResp{
-		GroupInfo: ConvertGroupModelToProto(g),
+		GroupInfo: ConvertGroupModelToProto(ecustGroup),
 	}
 	Return(c, resp)
 }
 
 func GetFriends(c *gin.Context) {
-	// TODO 先做jwt
-
+	tmp, exist := c.Get("user")
+	ecustUser := tmp.(*user.EcustUser)
+	if !exist {
+		c.String(http.StatusUnauthorized, "not login")
+		return
+	}
+	friendIds, err := friend.ListFriend(ecustUser.UserId)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "list friend error")
+		return
+	}
+	users, err := user.ListUser(friendIds)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "list user error")
+		return
+	}
+	resp := &dto.GetFriendsResp{
+		UserInfos: ConvertUsersModelToProto(users, true),
+	}
+	Return(c, resp)
 }
 
 func GetGroups(c *gin.Context) {
-	// TODO 先做jwt
+	tmp, exist := c.Get("user")
+	ecustUser := tmp.(*user.EcustUser)
+	if !exist {
+		c.String(http.StatusUnauthorized, "not login")
+		return
+	}
+	groupIds, err := group_member.ListGroup(ecustUser.UserId)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "list group error")
+		return
+	}
+	groups, err := group.ListGroup(groupIds)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "list group info error")
+		return
+	}
+	resp := &dto.GetGroupsResp{
+		GroupInfos: ConvertGroupsModelToProto(groups),
+	}
+	Return(c, resp)
 }
 
 func WsHandler(w http.ResponseWriter, r *http.Request) {
