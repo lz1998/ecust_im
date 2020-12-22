@@ -63,3 +63,22 @@ func ListFriend(userId int64) ([]int64, error) {
 	}
 	return friendIds, nil
 }
+
+func IsFriend(userA int64, userB int64) bool {
+	if userA == userB {
+		return false
+	}
+	if userA > userB {
+		userA, userB = userB, userA
+	}
+	q := model.Db.Model(&EcustFriend{})
+	q = q.Where("status = 1")
+	q = q.Where("user_a = ?", userA)
+	q = q.Where("user_b = ?", userB)
+	ecustFriend := &EcustFriend{}
+	if err := q.First(ecustFriend).Error; err != nil {
+		return false
+	} else {
+		return true
+	}
+}

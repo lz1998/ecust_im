@@ -7,6 +7,11 @@ import (
 	"github.com/lz1998/ecust_im/util"
 )
 
+const (
+	TFriend = 0
+	TGroup = 1
+)
+
 type EcustRequest struct {
 	ReqId     int64     `gorm:"column:req_id" json:"req_id" form:"req_id"`
 	ReqType   int64     `gorm:"column:req_type" json:"req_type" form:"req_type"`

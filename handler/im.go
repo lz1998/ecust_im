@@ -8,6 +8,7 @@ import (
 	"github.com/lz1998/ecust_im/model/friend"
 	"github.com/lz1998/ecust_im/model/group"
 	"github.com/lz1998/ecust_im/model/group_member"
+	"github.com/lz1998/ecust_im/model/request"
 	"github.com/lz1998/ecust_im/model/user"
 )
 
@@ -82,6 +83,79 @@ func GetGroups(c *gin.Context) {
 	resp := &dto.GetGroupsResp{
 		GroupInfos: ConvertGroupsModelToProto(groups),
 	}
+	Return(c, resp)
+}
+
+func ProcessAdd(c *gin.Context) {
+	req := &dto.ProcessAddReq{}
+	if err := c.Bind(req); err != nil {
+		c.String(http.StatusBadRequest, "bad request, not protobuf")
+		return
+	}
+
+	tmp, exist := c.Get("user")
+	ecustUser := tmp.(*user.EcustUser)
+	if !exist {
+		c.String(http.StatusUnauthorized, "not login")
+		return
+	}
+
+	ecustRequest, err := request.GetRequest(req.ReqId)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "failed to get request")
+		return
+	}
+
+	var processorId int64 // 处理人ID 目标用户/群主
+	if ecustRequest.ReqType == request.TFriend {
+		processorId = ecustRequest.ToId
+	} else {
+		ecustGroup, err := group.GetGroup(ecustRequest.ToId)
+		if err != nil {
+			c.String(http.StatusInternalServerError, "failed to get group")
+			return
+		}
+		processorId = ecustGroup.OwnerId
+	}
+
+	if processorId != ecustUser.UserId {
+		c.String(http.StatusForbidden, "not your request")
+		return
+	}
+
+	if req.Accept {
+		ecustRequest.Status = 1
+	} else {
+		ecustRequest.Status = 2
+	}
+
+	if err := request.UpdateRequest(ecustRequest); err != nil {
+		c.String(http.StatusInternalServerError, "failed to update request")
+		return
+	}
+
+	if req.Accept {
+		if ecustRequest.ReqType == 0 { // 好友
+			if _, err := friend.SaveFriend(&friend.EcustFriend{
+				UserA:  ecustRequest.FromId,
+				UserB:  ecustRequest.ToId,
+				Status: 1,
+			}); err != nil {
+				c.String(http.StatusInternalServerError, "failed to save friend")
+				return
+			}
+		} else { // 群
+			if _, err := group_member.SaveGroupMember(&group_member.EcustGroupMember{
+				GroupId: ecustRequest.ToId,
+				UserId:  ecustRequest.FromId,
+				Status:  1,
+			}); err != nil {
+				c.String(http.StatusInternalServerError, "failed to save group member")
+				return
+			}
+		}
+	}
+	resp := &dto.ProcessAddResp{}
 	Return(c, resp)
 }
 

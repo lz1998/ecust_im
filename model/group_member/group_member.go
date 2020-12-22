@@ -65,3 +65,16 @@ func ListGroup(userId int64) ([]int64, error) {
 	}
 	return groupIds, nil
 }
+
+func IsInGroup(groupId int64, userId int64) bool {
+	q := model.Db.Model(&EcustGroupMember{})
+	q = q.Where("status = 1")
+	q = q.Where("group_id = ?", groupId)
+	q = q.Where("user_id = ?", userId)
+	ecustGroupMember := &EcustGroupMember{}
+	if err := q.First(ecustGroupMember).Error; err != nil {
+		return false
+	} else {
+		return true
+	}
+}

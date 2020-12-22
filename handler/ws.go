@@ -12,6 +12,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/lz1998/ecust_im/dto"
 	"github.com/lz1998/ecust_im/model"
+	"github.com/lz1998/ecust_im/model/friend"
 	"github.com/lz1998/ecust_im/model/group"
 	"github.com/lz1998/ecust_im/model/group_member"
 	"github.com/lz1998/ecust_im/model/request"
@@ -255,12 +256,21 @@ func HandleMsg(msg *dto.Msg) {
 		},
 	}
 	if msg.MsgType == dto.Msg_TFriend {
+		if !friend.IsFriend(msg.FromId, msg.ToId) {
+			log.Warnf("not friend: %d %d", msg.FromId, msg.ToId)
+			return
+		}
 		// 发送给对方
 		if err := SendPacket(msg.ToId, packet); err != nil {
 			log.Errorf("failed to send packet, err: %+v", err)
 			return
 		}
 	} else {
+		if !group_member.IsInGroup(msg.ToId, msg.FromId) {
+			log.Warnf("not in group, %d %d", msg.ToId, msg.FromId)
+			return
+		}
+
 		// 发送给每个人
 		groupId := msg.ToId
 		memberIds, err := group_member.ListGroupMember(groupId)
