@@ -2,15 +2,15 @@ package handler
 
 import (
 	"fmt"
-	"github.com/lz1998/ecust_im/model/friend"
-	"github.com/lz1998/ecust_im/model/group_member"
-	"github.com/lz1998/ecust_im/model/user"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"github.com/lz1998/ecust_im/dto"
+	"github.com/lz1998/ecust_im/model/friend"
 	"github.com/lz1998/ecust_im/model/group"
+	"github.com/lz1998/ecust_im/model/group_member"
+	"github.com/lz1998/ecust_im/model/user"
 )
 
 var (
@@ -92,7 +92,7 @@ func GetGroups(c *gin.Context) {
 }
 
 func WsHandler(w http.ResponseWriter, r *http.Request) {
-	// TODO 先做jwt
+	// TODO 加群/加好友请求 群/好友消息处理
 	conn, err := wsUpgrader.Upgrade(w, r, nil)
 	if err != nil {
 		fmt.Println("Failed to set websocket upgrade: %+v", err)
