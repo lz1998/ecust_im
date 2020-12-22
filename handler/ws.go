@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -91,4 +92,35 @@ func WsHandler(c *gin.Context) {
 			// TODO 加群/加好友请求 群/好友消息处理
 		}
 	})
+
+	// TODO 从数据库读取上线之前的packet，全部发送
+}
+
+// 如果不在线会返回err
+func SendWebsocketMessage(userId int64, data []byte) error {
+	session, ok := SessionMap[userId]
+	if !ok {
+		return fmt.Errorf("user is not online")
+	}
+
+	session.SendChannel <- &SendingMessage{
+		MessageType: websocket.BinaryMessage,
+		Data:        data,
+	}
+	return nil
+}
+
+// 向客户端发送数据包，如果不在线就放到队列+数据库
+func SendPacket(userId int64, packet *dto.Packet) error {
+	b, err := packet.Marshal()
+	if err != nil {
+		return err
+	}
+	// 如果在线就发送
+	if err := SendWebsocketMessage(userId, b); err != nil {
+		// TODO 放到 redis队列 和 leveldb数据库
+		// redis(zset): msg_id1 -> msg_id2 -> msg_id3
+		// leveldb: {msg_id1: bytes1, msg_id2: bytes2, msg_id3: bytes3}
+
+	}
 }
