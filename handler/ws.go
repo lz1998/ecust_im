@@ -54,11 +54,11 @@ func WsHandler(c *gin.Context) {
 
 	// 发送channel
 	util.SafeGo(func() {
-		for {
-			sendingMessage := <-session.SendChannel
+		for sendingMessage := range session.SendChannel {
 			_ = conn.SetWriteDeadline(time.Now().Add(15 * time.Second))
 			if err := conn.WriteMessage(sendingMessage.MessageType, sendingMessage.Data); err != nil {
 				delete(SessionMap, ecustUser.UserId)
+				close(session.SendChannel)
 				_ = conn.Close()
 				break
 			}
@@ -71,6 +71,7 @@ func WsHandler(c *gin.Context) {
 			messageType, bytes, err := conn.ReadMessage()
 			if err != nil {
 				delete(SessionMap, ecustUser.UserId)
+				close(session.SendChannel)
 				_ = conn.Close()
 				break
 			}

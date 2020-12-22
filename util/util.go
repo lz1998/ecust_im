@@ -1,8 +1,13 @@
 package util
 
 import (
+	"sync/atomic"
+	"time"
+
 	log "github.com/sirupsen/logrus"
 )
+
+var Id = time.Now().Unix() * 1000
 
 func SafeGo(fn func()) {
 	go func() {
@@ -14,4 +19,8 @@ func SafeGo(fn func()) {
 		}()
 		fn()
 	}()
+}
+
+func GenerateId() int64 {
+	return atomic.AddInt64(&Id, 1)
 }
