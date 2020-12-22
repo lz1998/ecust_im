@@ -3,7 +3,9 @@ package handler
 import (
 	"context"
 	"fmt"
+	"github.com/lz1998/ecust_im/model/group"
 	"github.com/lz1998/ecust_im/model/group_member"
+	"github.com/lz1998/ecust_im/model/request"
 	"net/http"
 	"time"
 
@@ -200,9 +202,45 @@ func HandlePacket(fromUserId int64, packet *dto.Packet) {
 	}
 }
 
-func HandleRequest(request *dto.Request) {
-	// TODO 保存MySQL
-	// TODO 转发给对方/群主
+func HandleRequest(req *dto.Request) {
+	// 保存MySQL
+	// 转发给对方/群主
+	r := &request.EcustRequest{
+		ReqType: int64(req.ReqType),
+		FromId:  req.FromId,
+		ToId:    req.ToId,
+	}
+	modelRequest, err := request.CreateRequest(r)
+	if err != nil {
+		log.Warnf("failed to create request, err: %+v", err)
+		return
+	}
+	req.ReqId = modelRequest.ReqId
+	packet := &dto.Packet{
+		Timestamp:  time.Now().Unix(),
+		PacketType: dto.Packet_TRequest,
+		Data: &dto.Packet_Request{
+			Request: req,
+		},
+	}
+	if req.ReqType == dto.Request_TFriend {
+		// 发送给对方
+		if err := SendPacket(req.ToId, packet); err != nil {
+			log.Errorf("failed to send packet, err: %+v", err)
+			return
+		}
+	} else {
+		// 发送给群主
+		ecustGroup, err := group.GetGroup(req.ToId)
+		if err != nil {
+			log.Errorf("failed to get group, err: %+v", err)
+			return
+		}
+		if err := SendPacket(ecustGroup.OwnerId, packet); err != nil {
+			log.Errorf("failed to send packet, err: %+v", err)
+			return
+		}
+	}
 
 }
 
@@ -217,11 +255,13 @@ func HandleMsg(msg *dto.Msg) {
 		},
 	}
 	if msg.MsgType == dto.Msg_TFriend {
+		// 发送给对方
 		if err := SendPacket(msg.ToId, packet); err != nil {
 			log.Errorf("failed to send packet, err: %+v", err)
 			return
 		}
 	} else {
+		// 发送给每个人
 		groupId := msg.ToId
 		memberIds, err := group_member.ListGroupMember(groupId)
 		if err != nil {

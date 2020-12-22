@@ -50,3 +50,11 @@ func UpdateGroup(groups []*EcustGroup) error {
 	}
 	return nil
 }
+
+func GetGroup(groupId int64) (*EcustGroup, error) {
+	group := &EcustGroup{}
+	if err := model.Db.Model(&EcustGroup{}).Where("group_id = ?", groupId).First(group).Error; err != nil {
+		return nil, err
+	}
+	return group, nil
+}
