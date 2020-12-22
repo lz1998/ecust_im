@@ -59,18 +59,48 @@ func WsHandler(c *gin.Context) {
 
 	// 发送channel
 	util.SafeGo(func() {
-		for packetId := range pubSub.Channel() {
-			_ = conn.SetWriteDeadline(time.Now().Add(15 * time.Second))
-			data, err := model.LDb.Get([]byte(packetId.Payload), nil)
+		for {
+			streamName := fmt.Sprintf("PACKET:%d", ecustUser.UserId)
+			model.RDb.XGroupCreate(context.Background(), streamName, "cg", "0-0")
+			// TODO 这个可以放在register时创建
+			xStream, err := model.RDb.XReadGroup(context.Background(), &redis.XReadGroupArgs{
+				Streams:  []string{streamName},
+				Group:    "cg",
+				Consumer: "c",
+				Count:    1,
+				Block:    1 * time.Second,
+				NoAck:    false,
+			}).Result()
 			if err != nil {
-				log.Warnf("failed to get packet, err: %+v", err)
+				log.Warnf("read redis queue error")
 				continue
 			}
-			if err := conn.WriteMessage(websocket.BinaryMessage, data); err != nil {
-				delete(SessionMap, ecustUser.UserId)
-				_ = pubSub.Close()
-				_ = conn.Close()
-				break
+			for _, stream := range xStream {
+				for _, message := range stream.Messages {
+					pid, ok := message.Values["packetId"]
+					if !ok {
+						log.Warnf("packetId not exists")
+						model.RDb.XAck(context.Background(), streamName, "cg1", message.ID)
+						continue
+					}
+					packetId, ok := pid.(string)
+					if !ok {
+						log.Warnf("packet is not string")
+						model.RDb.XAck(context.Background(), streamName, "cg1", message.ID)
+						continue
+					}
+					data, err := model.LDb.Get([]byte(packetId), nil)
+					if err != nil {
+						log.Warnf("failed to get packet, err: %+v", err)
+						continue
+					}
+					if err := conn.WriteMessage(websocket.BinaryMessage, data); err != nil {
+						delete(SessionMap, ecustUser.UserId)
+						_ = pubSub.Close()
+						_ = conn.Close()
+						break
+					}
+				}
 			}
 		}
 	})
@@ -122,7 +152,10 @@ func SendPacket(userId int64, packet *dto.Packet) error {
 	}
 
 	// redis 消息队列发布
-	return model.RDb.Publish(context.Background(), fmt.Sprintf("PUSH:%d", userId), packetId).Err()
+	return model.RDb.XAdd(context.Background(), &redis.XAddArgs{
+		ID:     "*",
+		Values: []string{"packetId", packetId},
+	}).Err()
 }
 
 func GeneratePacketId(packet *dto.Packet) string {
