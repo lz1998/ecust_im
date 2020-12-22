@@ -3,9 +3,6 @@ package handler
 import (
 	"context"
 	"fmt"
-	"github.com/lz1998/ecust_im/model/group"
-	"github.com/lz1998/ecust_im/model/group_member"
-	"github.com/lz1998/ecust_im/model/request"
 	"net/http"
 	"time"
 
@@ -15,6 +12,9 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/lz1998/ecust_im/dto"
 	"github.com/lz1998/ecust_im/model"
+	"github.com/lz1998/ecust_im/model/group"
+	"github.com/lz1998/ecust_im/model/group_member"
+	"github.com/lz1998/ecust_im/model/request"
 	"github.com/lz1998/ecust_im/model/user"
 	"github.com/lz1998/ecust_im/util"
 	log "github.com/sirupsen/logrus"
@@ -64,8 +64,8 @@ func WsHandler(c *gin.Context) {
 	util.SafeGo(func() {
 		for {
 			streamName := fmt.Sprintf("PACKET:%d", ecustUser.UserId)
-			model.RDb.XGroupCreate(context.Background(), streamName, "cg", "0-0")
 			// TODO 这个可以放在register时创建
+			model.RDb.XGroupCreate(context.Background(), streamName, "cg", "0-0")
 			xStream, err := model.RDb.XReadGroup(context.Background(), &redis.XReadGroupArgs{
 				Streams:  []string{streamName},
 				Group:    "cg",
@@ -180,11 +180,11 @@ func GeneratePacketId(packet *dto.Packet) string {
 			packetId = fmt.Sprintf("msg:group:%d:%d", msg.ToId, uniqId)
 		}
 	} else {
-		request := packet.GetRequest()
-		if request.ReqType == dto.Request_TFriend {
-			packetId = fmt.Sprintf("request:friend:%d:%d", request.ReqId, uniqId)
+		req := packet.GetRequest()
+		if req.ReqType == dto.Request_TFriend {
+			packetId = fmt.Sprintf("request:friend:%d:%d", req.ReqId, uniqId)
 		} else {
-			packetId = fmt.Sprintf("request:group:%d:%d", request.ReqId, uniqId)
+			packetId = fmt.Sprintf("request:group:%d:%d", req.ReqId, uniqId)
 		}
 	}
 	return packetId
@@ -196,9 +196,9 @@ func HandlePacket(fromUserId int64, packet *dto.Packet) {
 		msg.FromId = fromUserId
 		HandleMsg(msg)
 	} else {
-		request := packet.GetRequest()
-		request.FromId = fromUserId
-		HandleRequest(request)
+		req := packet.GetRequest()
+		req.FromId = fromUserId
+		HandleRequest(req)
 	}
 }
 
