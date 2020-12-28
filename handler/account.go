@@ -37,7 +37,7 @@ func Register(c *gin.Context) {
 		return
 	}
 
-	u, err := user.CreateUser(&user.EcustUser{Password: req.Password, Nickname: req.Nickname})
+	 u, err := user.CreateUser(&user.EcustUser{Password: req.Password, Nickname: req.Nickname})
 	if err != nil {
 		c.String(http.StatusInternalServerError, "create user error")
 		return

@@ -46,7 +46,7 @@ func ListFriend(userId int64) ([]int64, error) {
 	var friends []*EcustFriend
 	q := model.Db.Model(&EcustFriend{})
 	q = q.Where("status = 1")
-	q = q.Where("user_a = ?").Or("user_b = ?")
+	q = q.Where("user_a = ?",userId).Or("user_b = ?",userId)
 	if err := q.Find(&friends).Error; err != nil {
 		return nil, err
 	}
