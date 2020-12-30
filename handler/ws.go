@@ -22,7 +22,11 @@ import (
 )
 
 var (
-	wsUpgrader = websocket.Upgrader{}
+	wsUpgrader = websocket.Upgrader{
+		CheckOrigin: func(r *http.Request) bool {
+			return false
+		},
+	}
 )
 
 type SendingMessage struct {
