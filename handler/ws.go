@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/websocket"
 	"github.com/lz1998/ecust_im/dto"
 	"github.com/lz1998/ecust_im/model"
@@ -143,7 +142,7 @@ func SendPacket(userId int64, packet *dto.Packet) error {
 
 	queueName := fmt.Sprintf("PACKET:%d", userId)
 	// redis 消息队列发布
-	model.RDb.LPush(context.Background(), queueName, packetId)
+	return model.RDb.LPush(context.Background(), queueName, packetId).Err()
 	//return model.RDb.XAdd(context.Background(), &redis.XAddArgs{
 	//	ID:     "*",
 	//	Stream: streamName,
