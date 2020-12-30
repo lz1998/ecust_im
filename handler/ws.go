@@ -24,7 +24,7 @@ import (
 var (
 	wsUpgrader = websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool {
-			return false
+			return true
 		},
 	}
 )
@@ -80,7 +80,7 @@ func WsHandler(c *gin.Context) {
 				NoAck:    false,
 			}).Result()
 			if err != nil {
-				log.Warnf("read redis queue error")
+				log.Warnf("read redis queue error, err: %+v", err)
 				continue
 			}
 			for _, stream := range xStream {
