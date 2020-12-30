@@ -31,7 +31,7 @@ func init() {
 
 	// Redis
 	RDb = redis.NewClient(&redis.Options{
-		Addr:     "tmp.lz1998:16379",
+		Addr:     "tmp.lz1998.xin:16379",
 		Password: os.Getenv("REDIS_PASSWORD"), // no password set
 		DB:       0,                           // use default DB
 	})
