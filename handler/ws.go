@@ -69,11 +69,6 @@ func WsHandler(c *gin.Context) {
 	util.SafeGo(func() {
 		for {
 			streamName := fmt.Sprintf("PACKET:%d", ecustUser.UserId)
-			// TODO 这个可以放在register时创建
-			if err := model.RDb.XGroupCreateMkStream(context.Background(), streamName, "cg", "$").Err(); err != nil {
-				log.Warnf("XGroupCreate error, err: %+v", err)
-				continue
-			}
 			xStream, err := model.RDb.XReadGroup(context.Background(), &redis.XReadGroupArgs{
 				Streams:  []string{streamName},
 				Group:    "cg",

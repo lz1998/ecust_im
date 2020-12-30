@@ -1,6 +1,10 @@
 package handler
 
 import (
+	"context"
+	"fmt"
+	"github.com/lz1998/ecust_im/model"
+	log "github.com/sirupsen/logrus"
 	"net/http"
 	"strings"
 
@@ -37,9 +41,15 @@ func Register(c *gin.Context) {
 		return
 	}
 
-	 u, err := user.CreateUser(&user.EcustUser{Password: req.Password, Nickname: req.Nickname})
+	u, err := user.CreateUser(&user.EcustUser{Password: req.Password, Nickname: req.Nickname})
 	if err != nil {
 		c.String(http.StatusInternalServerError, "create user error")
+		return
+	}
+	streamName := fmt.Sprintf("PACKET:%d", u.UserId)
+	if err := model.RDb.XGroupCreateMkStream(context.Background(), streamName, "cg", "0-0").Err(); err != nil {
+		log.Warnf("XGroupCreate error, err: %+v", err)
+		c.String(http.StatusInternalServerError, "XGroupCreateMkStream error")
 		return
 	}
 	resp := &dto.RegisterResp{
