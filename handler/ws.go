@@ -69,13 +69,10 @@ func WsHandler(c *gin.Context) {
 	util.SafeGo(func() {
 		for {
 			streamName := fmt.Sprintf("PACKET:%d", ecustUser.UserId)
-			xStream, err := model.RDb.XReadGroup(context.Background(), &redis.XReadGroupArgs{
+			xStream, err := model.RDb.XRead(context.Background(), &redis.XReadArgs{
 				Streams:  []string{streamName},
-				Group:    "cg",
-				Consumer: "c",
 				Count:    1,
 				Block:    1 * time.Second,
-				NoAck:    false,
 			}).Result()
 			if err != nil {
 				log.Warnf("read redis queue error, err: %+v", err)
