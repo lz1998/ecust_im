@@ -39,9 +39,9 @@ type UserSession struct {
 var SessionMap = make(map[int64]*UserSession)
 
 func WsHandler(c *gin.Context) {
-	tmp, exist := c.Get("user")
-	ecustUser := tmp.(*user.EcustUser)
-	if !exist {
+	token := c.Query("token")
+	ecustUser, err := util.JwtParseUser(token)
+	if err != nil {
 		c.String(http.StatusUnauthorized, "not login")
 		return
 	}
