@@ -70,7 +70,7 @@ func WsHandler(c *gin.Context) {
 		for {
 			streamName := fmt.Sprintf("PACKET:%d", ecustUser.UserId)
 			// TODO 这个可以放在register时创建
-			if err := model.RDb.XGroupCreate(context.Background(), streamName, "cg", "$").Err(); err != nil {
+			if err := model.RDb.XGroupCreateMkStream(context.Background(), streamName, "cg", "$").Err(); err != nil {
 				log.Warnf("XGroupCreate error, err: %+v", err)
 				continue
 			}
