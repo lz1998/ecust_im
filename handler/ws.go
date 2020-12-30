@@ -70,7 +70,10 @@ func WsHandler(c *gin.Context) {
 		for {
 			streamName := fmt.Sprintf("PACKET:%d", ecustUser.UserId)
 			// TODO 这个可以放在register时创建
-			model.RDb.XGroupCreate(context.Background(), streamName, "cg", "0-0")
+			if err := model.RDb.XGroupCreate(context.Background(), streamName, "cg", "$").Err(); err != nil {
+				log.Warnf("XGroupCreate error, err: %+v", err)
+				continue
+			}
 			xStream, err := model.RDb.XReadGroup(context.Background(), &redis.XReadGroupArgs{
 				Streams:  []string{streamName},
 				Group:    "cg",
