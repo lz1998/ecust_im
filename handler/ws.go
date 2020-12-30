@@ -70,7 +70,7 @@ func WsHandler(c *gin.Context) {
 			queueName := fmt.Sprintf("PACKET:%d", ecustUser.UserId)
 			packetId, err := model.RDb.RPop(context.Background(), queueName).Result()
 			if err != nil {
-				log.Warnf("read packet error, err: %+v", err)
+				//log.Warnf("read packet error, err: %+v", err)
 				time.Sleep(1 * time.Second)
 				continue
 			}
