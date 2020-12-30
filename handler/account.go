@@ -47,7 +47,7 @@ func Register(c *gin.Context) {
 		return
 	}
 	streamName := fmt.Sprintf("PACKET:%d", u.UserId)
-	if err := model.RDb.XGroupCreateMkStream(context.Background(), streamName, "cg", "0-0").Err(); err != nil {
+	if err := model.RDb.XGroupCreateMkStream(context.Background(), streamName, "cg", "$").Err(); err != nil {
 		log.Warnf("XGroupCreate error, err: %+v", err)
 		c.String(http.StatusInternalServerError, "XGroupCreateMkStream error")
 		return
