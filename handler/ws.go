@@ -37,7 +37,6 @@ type SendingMessage struct {
 type UserSession struct {
 	Conn   *websocket.Conn
 	User   *user.EcustUser
-	PubSub *redis.PubSub
 }
 
 var SessionMap = make(map[int64]*UserSession)
@@ -56,55 +55,40 @@ func WsHandler(c *gin.Context) {
 		return
 	}
 
-	pubSub := model.RDb.Subscribe(context.Background(), fmt.Sprintf("PUSH:%d", ecustUser.UserId))
+	//pubSub := model.RDb.Subscribe(context.Background(), fmt.Sprintf("PUSH:%d", ecustUser.UserId))
 
 	session := &UserSession{
-		Conn:   conn,
-		User:   ecustUser,
-		PubSub: pubSub,
+		Conn: conn,
+		User: ecustUser,
+		//PubSub: pubSub,
 	}
 	SessionMap[ecustUser.UserId] = session
 
 	// 发送channel
 	util.SafeGo(func() {
 		for {
-			streamName := fmt.Sprintf("PACKET:%d", ecustUser.UserId)
-			xStream, err := model.RDb.XRead(context.Background(), &redis.XReadArgs{
-				Streams:  []string{streamName},
-				Count:    1,
-				Block:    1 * time.Second,
-			}).Result()
+			queueName := fmt.Sprintf("PACKET:%d", ecustUser.UserId)
+			packetId, err := model.RDb.RPop(context.Background(), queueName).Result()
 			if err != nil {
-				log.Warnf("read redis queue error, err: %+v", err)
+				log.Warnf("read packet error, err: %+v", err)
+				time.Sleep(1 * time.Second)
 				continue
 			}
-			for _, stream := range xStream {
-				for _, message := range stream.Messages {
-					pid, ok := message.Values["packetId"]
-					if !ok {
-						log.Errorf("packetId not exists")
-						model.RDb.XAck(context.Background(), streamName, "cg1", message.ID)
-						continue
-					}
-					packetId, ok := pid.(string)
-					if !ok {
-						log.Errorf("packet is not string")
-						model.RDb.XAck(context.Background(), streamName, "cg1", message.ID)
-						continue
-					}
-					data, err := model.LDb.Get([]byte(packetId), nil)
-					if err != nil {
-						log.Errorf("failed to get packet, err: %+v", err)
-						continue
-					}
-					if err := conn.WriteMessage(websocket.BinaryMessage, data); err != nil {
-						delete(SessionMap, ecustUser.UserId)
-						_ = pubSub.Close()
-						_ = conn.Close()
-						break
-					}
-					model.RDb.XAck(context.Background(), streamName, "cg1", message.ID)
-				}
+
+			if packetId == "" {
+				log.Infof("no data")
+				continue
+			}
+
+			data, err := model.LDb.Get([]byte(packetId), nil)
+			if err != nil {
+				log.Errorf("failed to get packet, err: %+v", err)
+				continue
+			}
+			if err := conn.WriteMessage(websocket.BinaryMessage, data); err != nil {
+				delete(SessionMap, ecustUser.UserId)
+				_ = conn.Close()
+				break
 			}
 		}
 	})
@@ -115,7 +99,7 @@ func WsHandler(c *gin.Context) {
 			messageType, bytes, err := conn.ReadMessage()
 			if err != nil {
 				delete(SessionMap, ecustUser.UserId)
-				_ = pubSub.Close()
+				//_ = pubSub.Close()
 				_ = conn.Close()
 				break
 			}
@@ -157,13 +141,14 @@ func SendPacket(userId int64, packet *dto.Packet) error {
 		return err
 	}
 
-	streamName := fmt.Sprintf("PACKET:%d", userId)
+	queueName := fmt.Sprintf("PACKET:%d", userId)
 	// redis 消息队列发布
-	return model.RDb.XAdd(context.Background(), &redis.XAddArgs{
-		ID:     "*",
-		Stream: streamName,
-		Values: []string{"packetId", packetId},
-	}).Err()
+	model.RDb.LPush(context.Background(), queueName, packetId)
+	//return model.RDb.XAdd(context.Background(), &redis.XAddArgs{
+	//	ID:     "*",
+	//	Stream: streamName,
+	//	Values: []string{"packetId", packetId},
+	//}).Err()
 }
 
 func GeneratePacketId(packet *dto.Packet) string {
